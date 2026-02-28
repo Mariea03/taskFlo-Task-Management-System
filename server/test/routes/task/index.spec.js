@@ -10,6 +10,7 @@ const request = require('supertest');
 const app = require('../../../src/app');
 const { mongo } = require('../../../src/utils/mongo');
 
+
 jest.mock('../../../src/utils/mongo');
 
 // Test the task APIs
@@ -304,5 +305,57 @@ describe('Task API Tests', () => {
             expect(savedTask.dateCreated).toBeDefined();
             expect(savedTask.dateModified).toBeDefined();
         });
+    });
+});
+
+// Test Task
+
+describe('GET /api/tasks/:id - Read task by ID', () => {
+
+    // Test 1: Successful fetch
+    it('should return a task when given a valid ID', async () => {
+        const taskId = '300000000000000000000001';
+
+        mongo.mockImplementation(async (callback)=> {
+            const db = {
+                collection: jest.fn().mockReturnThis(),
+                findOne: jest.fn().mockResolvedValue({
+                    _id: taskId,
+                    title: 'Test Task',
+                    description: 'Test Description',
+                    status: 'Pending',
+                    priority: 'High',
+                    projectId: '200000000000000000000001'
+                })
+            };
+            await callback(db);
+        });
+        const res = await request(app).get(`/api/tasks/${taskId}`);
+    });
+
+    // Test 2: Invalid Id format
+    it('should return 400 for invalid task ID', async () => {
+        const res = await request(app).get('/api/tasks/123');
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toBe('Invalid task ID');
+    });
+
+    // Test 3: Task not found
+    it('should return 404 when task is not found', async () => {
+        const taskId = '300000000000000000000099';
+
+        mongo.mockImplementation(async (callback)=> {
+            const db ={
+                collection: jest.fn().mockReturnThis(),
+                findOne: jest.fn().mockResolvedValue(null)
+            };
+            await callback(db);
+        });
+
+        const res = await request(app).get(`/api/tasks/${taskId}`);
+
+        expect(res.status).toBe(404);
+        expect(res.body.message).toBe('Task not found');
     });
 });

@@ -8,6 +8,8 @@
 const express = require('express');
 const router = express.Router();
 const { mongo } = require('../../utils/mongo');
+const { ObjectId } = require('mongodb');
+
 
 /**
  * @route GET /api/tasks
@@ -69,5 +71,42 @@ router.post('/', async (req, res, next) => {
         next(err);
     }
 });
+  
+router.get('/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+   
+
+    // Validate ID format
+    const isValidId = /^[a-f\d]{24}$/i.test(id);
+    if(!isValidId) {
+        return res.status(400).json({
+            success:false,
+            message: 'Invalid task ID'
+        });
+    }
+
     
+        await mongo(async (db) => {
+            const task = await db.collection('tasks').findOne({ _id: id });
+
+            if (!task) {
+                return res.status(404).json({
+                    success:false,
+                    message: 'Task not found'
+                })
+            }    
+
+            // Success
+            res.status(200).json({
+                success: true,
+                data: task
+            });
+        }, next);
+
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;
